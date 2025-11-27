@@ -1,0 +1,209 @@
+
+
+* ROBUSTNESS CHECK
+
+
+* 1. VOTING PARTICIPATION
+
+/*
+A notable limitation concerns the imperfect alignment between survey fieldwork and national electoral calendars, which may introduce timing-related biases—particularly in analyses of conventional participation. To address this issue, we control for the time elapsed between the interview date and the most recent national election. In addition, we re-estimate all models on a restricted sample including only respondents who were interviewed within 300 days of the latest national election. In our case, such overlap occurs only for France and the Netherlands in 2012, and for Ireland in 2016.  */
+
+* Reference Model Sample Size
+logit vote c.lmv_re i.labcon2 i.class5 i.cat_skill c.rlgdgr i.gender i.ethnie2 c.age  ///
+    c.agea c.nat_unemp c.gdp i.cntry_num i.essround [pweight=newweight2], vce(cluster cntry_num)	
+	
+
+* RISK-BASED OUTSIDERNESS 
+logit vote c.lmv_re i.cat_skill c.rlgdgr i.gender i.ethnie2 c.age  ///
+    c.agea c.nat_unemp c.gdp i.cntry_num i.essround if e(sample) [pweight=newweight2], vce(cluster cntry_num)	
+	
+
+* Restricted estimation sample, interviewed within 300 days of the last national election
+logit vote c.lmv_re  i.cat_skill c.rlgdgr i.gender i.ethnie2 c.age ///
+      c.agea c.nat_unemp c.gdp i.cntry_num i.essround ///
+      if (cntry == "FR" & year == 2012) ///
+       | (cntry == "NL" & year == 2012) ///
+       | (cntry == "IE" & year == 2016) &  e(sample) ///
+	  [pweight=newweight2], vce(cluster cntry_num)
+	  
+	  
+* STATUS-BASED OUTSIDERNESS
+
+* Logit with welfare regime
+logit vote  i.labcon2 i.class5 i.cat_skill c.rlgdgr i.gender i.ethnie2 c.age  ///
+    c.agea c.nat_unemp c.gdp i.cntry_num i.essround [pweight=newweight2] if e(sample), vce(cluster cntry_num)
+
+
+logit vote i.labcon2 i.class5 i.cat_skill c.rlgdgr i.gender i.ethnie2 c.age ///
+      c.agea c.nat_unemp c.gdp i.cntry_num i.essround ///
+      if (cntry == "FR" & year == 2012) ///
+       | (cntry == "NL" & year == 2012) ///
+       | (cntry == "IE" & year == 2016) ///
+	   & year == 2016) &  e(sample) ///
+	  [pweight=newweight2], vce(cluster cntry_num)
+
+/*
+Restricting the analysis to respondents interviewed within 300 days of a national election reduces the magnitude of the estimated coefficients, but the direction of all effects remains unchanged. This indicates that while proximity to elections may slightly attenuate outsider–insider differences in political participation, but the underlying relationships we built upon are substantively robust. The absence of any sign reversals in direction  suggests that our main findings are not driven by election-timing.
+*/
+
+
+
+* 2. ROBUSTNESS: ADDITIONAL SES INDICATORS
+
+
+* INCOME CONTROL
+
+
+* Reference Model Sample Size
+logit vote c.lmv_re i.labcon2 i.class5 i.cat_skill c.rlgdgr i.gender i.ethnie2 c.age  ///
+    c.agea c.nat_unemp c.gdp i.cntry_num i.essround [pweight=newweight2], vce(cluster cntry_num)	
+
+	
+* CONVENTIONAL PARTICIPATION 
+
+* Status-Based Labor Market Dualization
+khb logit vote i.labcon2   || i.inc3med if e(sample) [pweight=newweight2], ///
+    cluster(cntry_num) vce(cluster cntry_num) ///
+    concomitant(o.class5 i.cat_skill c.rlgdgr i.gender i.ethnie2 c.age c.agea c.nat_unemp c.gdp  i.cntry_num i.essround) ///
+	summary
+
+
+* Risk-Based Labor Market Dualization
+khb logit vote c.lmv_re  || i.inc3med if e(sample) [pweight=newweight2], ///
+    cluster(cntry_num) vce(cluster cntry_num) ///
+    concomitant(i.cat_skill c.rlgdgr i.gender i.ethnie2 c.age c.agea c.nat_unemp c.gdp  i.cntry_num i.essround) ///
+	summary
+	
+
+/* 
+In our theoretical framework, income is a key resource underlying both risk-based and  status-based labour-market dualization. Since income is unequally distributed between  insiders and outsiders, we first examine whether controlling for income reduces the  participation gaps.
+Temporary workers are significantly less likely to vote. The KHB results show that  about 31% of this gap is mediated through their lower income, while the remaining effect reflects a direct civic disadvantage linked to insecure employment. Higher labour-market risk similarly lowers the likelihood of voting. Here, about 16% of the  effect is mediated through income, indicating that risk-based outsiders face both  material constraints and direct participatory disadvantages. These findings highlight  the importance of material resources for political participation (Verba et al. 1999)  and support our hypothesis concerning the income divide between insiders and outsiders.
+*/
+
+
+* UNCONVENTIONAL PARTICIPATION 
+
+
+* Reference Model Sample Size
+reg politics_index c.lmv_re i.labcon2 i.class5 i.cat_skill c.rlgdgr i.gender i.ethnie2 c.age  ///
+    c.agea c.nat_unemp c.gdp i.cntry_num i.essround [pweight=newweight2], vce(cluster cntry_num)	
+
+* Status-Based Labor Market Dualization
+
+* Without Class 	
+reg politics_index i.labcon2  i.cat_skill c.rlgdgr i.gender i.ethnie2 c.age  ///
+    c.agea c.nat_unemp c.gdp i.cntry_num i.essround [pweight=newweight2] if e(sample), vce(cluster cntry_num)
+	
+* With Class
+reg politics_index i.labcon2  i.inc3med i.cat_skill c.rlgdgr i.gender i.ethnie2 c.age  /// 
+    c.agea c.nat_unemp c.gdp i.cntry_num i.essround [pweight=newweight2] if e(sample), vce(cluster cntry_num)	
+
+
+* Risk-Based Labor Market Dualization
+
+* Without Class 	
+reg politics_index c.lmv_re  i.cat_skill c.rlgdgr i.gender i.ethnie2 c.age  ///
+    c.agea c.nat_unemp c.gdp i.cntry_num i.essround [pweight=newweight2] if e(sample), vce(cluster cntry_num)
+	
+* With Class
+reg politics_index c.lmv_re  i.inc3med i.cat_skill c.rlgdgr i.gender i.ethnie2 c.age  /// 
+    c.agea c.nat_unemp c.gdp i.cntry_num i.essround [pweight=newweight2] if e(sample), vce(cluster cntry_num)	
+
+	
+/*
+Across broader forms of unconvnetional forms of political engagement, temporary workers do not differ from permanent workers, even after controlling for income.
+By contrast, labor market risk shows a clear and robust demobilising effect. Individuals with higher labour-market risk report significantly lower levels of overall political engagement. Importantly, this effect persists, and only marginally decreases, after accounting for income, highlighting that risk-based outsiderness  depresses political involvement beyond material constraints of income alone.
+*/
+
+* CLASS CONTROL FOR RISK-BASED OUTSIDERNESS 
+
+* Reference Model Sample Size	
+logit vote c.lmv_re i.labcon2 i.class5 i.cat_skill c.rlgdgr i.gender i.ethnie2 c.age  ///
+    c.agea c.nat_unemp c.gdp i.cntry_num i.essround [pweight=newweight2], vce(cluster cntry_num)	
+
+
+khb logit vote c.lmv_re  || i.class5 if e(sample) [pweight=newweight2], ///
+    cluster(cntry_num) vce(cluster cntry_num) ///
+    concomitant(i.cat_skill c.rlgdgr i.gender i.ethnie2 c.age c.agea c.nat_unemp c.gdp  i.cntry_num i.essround) ///
+	summary
+	
+* Reference Model Sample Size
+reg politics_index c.lmv_re i.labcon2 i.class5 i.cat_skill c.rlgdgr i.gender i.ethnie2 c.age  ///
+    c.agea c.nat_unemp c.gdp i.cntry_num i.essround [pweight=newweight2], vce(cluster cntry_num)	
+
+* Without Class 	
+reg politics_index c.lmv_re  i.cat_skill c.rlgdgr i.gender i.ethnie2 c.age  ///
+    c.agea c.nat_unemp c.gdp i.cntry_num i.essround [pweight=newweight2] if e(sample), vce(cluster cntry_num)
+	
+* With Class
+reg politics_index c.lmv_re  i.class5 i.cat_skill c.rlgdgr i.gender i.ethnie2 c.age  /// 
+    c.agea c.nat_unemp c.gdp i.cntry_num i.essround [pweight=newweight2] if e(sample), vce(cluster cntry_num)	
+
+
+/*
+Labour-market risk significantly reduces the likelihood of voting, but more than half of this effect (ca. 54%) is mediated, more likely confounded by class. This indicates that the participatory disadvantage of risk-based outsiders is strongly class-dependent, reflecting the structural concentration of labor market vulnerability in lower-class profiles. Thus, political demobilisation among high risk individuals is driven less by risk exposure alone and more by the class based inequalities, which first and fore most might be in  material resources, but also civic. 
+
+Next, without class controls, higher labour-market risk is strongly associated with lower levels of political engagement. A one-unit increase in the risk score reduces the politics activiy by about -0.11 points on the political incex scale. Once class is included, this effect shrinks to a small and statistically insignificant coefficient of about –0.03. This suggests that the demobilising effect of labour-market risk on broader political participation is again largely explained by class position. All this might be not suprising as the risk score relies on Class see Discussion Ch. 4.4. Both results suggest that risk-based outsiderness operates largely through class rather than independently of it, a point that should be kept in mind when interpreting and maintaining our conclusions.
+*/
+
+
+
+* 3. ROBUSTNESS: LOWER INCOME & LOWER UNION DENSITY (Ch. 3.3)
+
+* INCOME 
+
+/*
+ We formulated an income dualization hypothesis (see Chapter 3.3) to capture the scarcity of material resources among labor market outsiders. In the following analyses, we assess whether outsiders defined both through labor market risk and contractual status experience systematic income disadvantages.
+*/
+
+reg hinctnta c.lmv_re i.cat_skill c.rlgdgr i.gender i.ethnie2 c.age  ///
+    c.agea c.nat_unemp c.gdp i.cntry_num i.essround [pweight=newweight2], vce(cluster cntry_num)
+	
+/* 
+The higher an individual's labor market risk, the lower their income.
+*/
+	
+	
+
+reg hinctnta i.labcon2 i.class5 i.cat_skill c.rlgdgr i.gender i.ethnie2 c.age  ///
+    c.agea c.nat_unemp c.gdp i.cntry_num i.essround [pweight=newweight2], vce(cluster cntry_num)	
+
+/*
+Temporary workers earn significantly less than permanent workers
+
+Consistent with the dualization literature, the higher an individual's labour-market risk, 
+the lower their income. This effect is significant and confirms that risk-based outsiders 
+face also an income divide. Same goes for temporary workers, who earn significantly less 
+than permanent workers.
+
+*/
+
+
+* TRADE UNIONS
+
+/*
+Further, in line with our theoretical framework, we formulated a civic disembeddedness hypothesis (see Chapter 3.3), proposing that outsiders are less likely to be members of trade unions than insiders and therefore possess fewer civic resources. To assess this mechanism empirically, we examine patterns of union affiliation using a binary indicator of trade union membership (1 = yes; 2 former member/ no).
+*/
+
+cap drop union_dummy
+recode union (1 = 0) ( 2 3 = 1), gen(union_dummy)
+
+
+logit union_dummy c.lmv_re i.cat_skill c.rlgdgr i.gender i.ethnie2 c.age  ///
+    c.agea c.nat_unemp c.gdp i.cntry_num i.essround [pweight=newweight2], vce(cluster cntry_num)
+
+logit union_dummy c.lmv_re c.rlgdgr i.gender i.ethnie2 c.age  ///
+    c.agea c.nat_unemp c.gdp i.cntry_num i.essround [pweight=newweight2], vce(cluster cntry_num)
+
+	
+logit union_dummy i.labcon2 i.class5 i.cat_skill c.rlgdgr i.gender i.ethnie2 c.age  ///
+    c.agea c.nat_unemp c.gdp i.cntry_num i.essround [pweight=newweight2], vce(cluster cntry_num)
+
+
+/* 
+
+For risk-based outsiders, the results do not fully align with theoretical expectations once education is controlled for. Without these controls, higher labour-market risk is associated with lower union membership, yet this effect is substantially attenuated when accounting for educational attainment. This indicates that the link between labour-market risk and union membership is highly education dependent, with education absorbing much of the observed association. This is consistent with the conceptual nature of risk-based outsiderness, which does not represent a concrete workplace position but rather cumulative exposure to insecurity, instability, and unemployment spells, which are foregrounded in the thesis.
+
+In contrast, the findings for status-based labour-market dualization are clear and fully consistent with our theoretical expectations. Temporary workers are significantly less likely to be union members than permanent workers. Crucially, this pattern strengthens our argument that EPL interacts primarily with status-based outsider positions, because stronger dismissal protection tends to reinforce the resources and organisational embeddedness of insiders, often mediated through trade unions, while temporary workers remain excluded from these benefits. As a result, only status-based outsiders experience a meaningful policy-feedback mechanism, reduced workplace integration, weaker collective ties, and ultimately lower political participation, when EPL becomes more stringent and qualifies them to be the right target group.
+
+*/

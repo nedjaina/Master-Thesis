@@ -1,0 +1,170 @@
+# --- Libraries ---------------------------------------------------------------
+library(ggplot2)
+library(dplyr)
+library(showtext)    
+library(sysfonts)
+library(extrafont) 
+library(tidyverse)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+
+
+# LATEX FONT
+install.packages("extrafont")
+library(extrafont)
+font_import(pattern = "lmroman*", prompt = FALSE)
+
+# Generate Theme
+s2mono_colors <- c(
+  "Permanent Contract" = "#D9D9D9",  
+  "Temporary Contract" = "#9E9E9E"  
+)
+
+s2mono_colors <- c(
+  "Not at Risk" = "#D9D9D9", 
+  "At Risk" = "#9E9E9E"   
+)
+
+theme_s2mono_latex <- function(base_size = 14, base_family = "CMU Serif") {
+  available_fonts <- tryCatch(systemfonts::system_fonts()$family, error = function(e) NULL)
+  if (is.null(available_fonts) || !(base_family %in% available_fonts)) {
+    base_family <- "serif"
+  }
+  grid_major <- if (utils::packageVersion("ggplot2") >= "3.4.0") {
+    element_line(color = "gray90", linewidth = 0.4)
+  } else {
+    element_line(color = "gray90", size = 0.4)
+  }
+  theme_minimal(base_size = base_size, base_family = base_family) +
+    theme(
+      text = element_text(color = "#3A3A3A"),
+      plot.title = element_text(face = "bold", size = base_size + 5, hjust = 0, margin = margin(b = 8)),
+      plot.subtitle = element_text(size = base_size + 2, color = "gray40", hjust = 0, margin = margin(b = 14)),
+      axis.title.x = element_text(size = base_size + 2, margin = margin(t = 12)),
+      axis.title.y = element_text(size = base_size + 2, margin = margin(r = 12)),
+      axis.text = element_text(size = base_size, color = "gray30"),
+      panel.grid.major = grid_major,
+      panel.grid.minor = element_blank(),
+      legend.position = "bottom",
+      legend.title = element_text(size = base_size),
+      legend.text = element_text(size = base_size - 1),
+      plot.margin = margin(t = 18, r = 18, b = 18, l = 18)
+    )
+}
+
+
+
+
+
+# PLOT
+
+# STATUS-BASED LABOR MARKET DUALIZATION
+
+df_violin_politics <- df %>%
+  mutate(labcon2_num = haven::as_factor(labcon2, levels = "values")) %>%
+  mutate(labcon2_num = as.numeric(as.character(labcon2_num))) %>%
+  filter(!is.na(politics_index),
+         labcon2_num %in% c(0, 1),
+         !is.na(anweight)) %>%
+  mutate(
+    labcon2_fac = factor(
+      labcon2_num,
+      levels = c(0, 1),
+      labels = c("Permanent Contract", "Temporary Contract")
+    )
+  )
+
+plot_a <- ggplot(df_violin_politics,
+                 aes(x = labcon2_fac, y = politics_index, fill = labcon2_fac, weight = anweight)) +
+  geom_violin(trim = FALSE, scale = "area", color = "#F2F2F2", alpha = 0.95) +
+  geom_boxplot(width = 0.1, outlier.shape = NA, color = "gray50",
+               fill = "white", alpha = 0.6, coef = 0, show.legend = FALSE) +
+  stat_summary(aes(shape = "Mean"), fun = mean, geom = "point", size = 3,
+               stroke = 1, color = "gray20", fill = "gray20", show.legend = TRUE) +
+  scale_shape_manual(name = "Parameter", values = c(Mean = 21)) +
+  scale_fill_manual(values = s2mono_colors, guide = "none") +
+  labs(
+    title = "Unconventional Participation by Status-Based Labor Market Dualization",
+    subtitle = "Distribution across Employment Contracts",
+    x = "Employment Contract",
+    y = "Unconventional Participation Index (1-4)",
+    shape = NULL
+  ) +
+  theme_s2mono_latex(base_size = 14)
+
+
+# RISK-BASED LABOR MARKET DUALIZATION
+
+df_violin_lmv <- df %>%
+  mutate(
+    lmv_group_num = as.numeric(as.character(lmv_group))
+  ) %>%
+  filter(
+    !is.na(politics_index),
+    !is.na(lmv_group_num),
+    !is.na(anweight),
+    lmv_group_num %in% c(0, 1)
+  ) %>%
+  mutate(
+    lmv_group_fac = factor(
+      lmv_group_num,
+      levels = c(0, 1),
+      labels = c("Low Risk", "High Risk")
+    )
+  )
+
+
+plot_b <- ggplot(df_violin_lmv,
+                 aes(x = lmv_group_fac, y = politics_index, fill = lmv_group_fac, weight = anweight)) +
+  geom_violin(trim = FALSE, scale = "area", color = "#F2F2F2", alpha = 0.95) +
+  geom_boxplot(width = 0.1, outlier.shape = NA, color = "gray50",
+               fill = "white", alpha = 0.6, coef = 0, show.legend = FALSE) +
+  stat_summary(aes(shape = "Mean"), fun = mean, geom = "point", size = 3,
+               stroke = 1, color = "gray20", fill = "gray20", show.legend = TRUE) +
+  scale_shape_manual(name = "Parameter", values = c(Mean = 21)) +
+  scale_fill_manual(values = s2mono_colors, guide = "none") +
+  labs(
+    title    = "Unconventional Participation by Risk-Based Labor Market Dualization",
+    subtitle = "Distribution across Risk of Unemployment and Atypical Employment",
+    x = "Labor Market Risk",
+    y = "Unconventional Participation Index (1-4)",
+    shape = NULL
+  ) +
+  theme_s2mono_latex(base_size = 14)
+
+## Combine Plot (Status-Based and Risk-Based Labor Market Dualization)
+combined_plot <- plot_a + plot_b +
+  plot_layout(ncol = 2, widths = c(1.2, 1)) & 
+  theme(
+    plot.margin = margin(10, 20, 10, 20)
+  )
+
+combined_plot
+
+
+# Mean and Median for both labor market measures
+means_a <- df_violin_politics %>%
+  group_by(labcon2_fac) %>%
+  summarise(
+    weighted_mean = weighted.mean(politics_index, anweight, na.rm = TRUE),
+    weighted_median = Hmisc::wtd.quantile(politics_index, weights = anweight, probs = 0.5, na.rm = TRUE)
+  )
+
+
+means_b <- df_violin_lmv %>%
+  group_by(lmv_group_fac) %>%
+  summarise(
+    weighted_mean = weighted.mean(politics_index, anweight, na.rm = TRUE),
+    weighted_median = Hmisc::wtd.quantile(politics_index, weights = anweight, probs = 0.5, na.rm = TRUE)
+  )
+
+means_a
+means_b
+
+
+
+
+
+
+

@@ -1,0 +1,80 @@
+
+* LOGIT: Model Fit
+
+* Reference Model Sample Size
+logit vote c.lmv_re i.labcon2 i.class5 i.cat_skill c.rlgdgr i.gender i.ethnie2 c.age  ///
+    c.agea c.nat_unemp c.gdp i.cntry_num i.essround [pweight=newweight2], vce(cluster cntry_num)
+	
+
+* RISK-BASED LABOR MARKET DUALIZATION
+
+logit vote c.lmv_re i.cat_skill c.rlgdgr i.gender ///
+      i.ethnie2 c.age c.agea c.nat_unemp c.gdp i.cntry_num i.essround if e(sample), ///
+      vce(cluster cntry_num) 
+estimates store M_full
+
+logit vote c.lmv_re  i.welfare_regime i.cat_skill c.rlgdgr i.gender ///
+      i.ethnie2 c.age c.agea c.nat_unemp c.gdp i.cntry_num i.essround if e(sample), ///
+      vce(cluster cntry_num)
+estimates store M_wel
+
+logit vote c.lmv_re##i.welfare_regime i.cat_skill c.rlgdgr i.gender ///
+      i.ethnie2 c.age c.agea c.nat_unemp c.gdp i.essround if e(sample), ///
+      vce(cluster cntry_num)
+estimates store M_inter
+
+estimates stats M_full M_wel M_inter     //  AIC/BIC 
+
+/*
+Although the interaction model increases AIC/BIC, this is not surprising. Interaction terms rarely improve global model fit, because they increase model complexity without substantially improving predictive power, see also Pseudo R-Squared. The presence or absence of moderation should be evaluated based on the significance and substantive interpretation of the interaction term, not on AIC/BIC.
+*/
+
+logit vote c.lmv_re##i.welfare_regime i.cat_skill c.rlgdgr i.gender ///
+      i.ethnie2 c.age c.agea c.nat_unemp c.gdp i.cntry_num i.essround if e(sample), ///
+      vce(cluster cntry_num)
+estimates store M_inter
+
+estat gof, group(10)                     // Hosmer-Lemeshow
+lroc                                     // ROC mit AUC
+
+/*
+The ROC curve analysis demonstrates good discriminative ability  (AUC = 0.7568), indicating that the model effectively distinguishes between voters and non-voters based on labor market position, institutional context, and control variables.
+*/
+
+* Wald-Test
+
+logit vote  c.lmv_re i.welfare_regime   i.cat_skill c.rlgdgr i.gender ///
+      i.ethnie2 c.age c.agea c.nat_unemp c.gdp i.cntry_num i.essround if e(sample), ///
+      vce(cluster cntry_num)
+
+testparm  i.welfare_regime  
+
+
+logit vote  c.lmv_re##i.welfare_regime  i.cat_skill c.rlgdgr i.gender ///
+      i.ethnie2 c.age c.agea c.nat_unemp c.gdp i.cntry_num i.essround, ///
+      vce(cluster cntry_num)
+
+testparm c.lmv_re##i.welfare_regime
+
+testparm welfare_regime c.lmv_re##i.welfare_regime
+
+/*
+The Wald test confirms that welfare regimes significantly affect political participation. The main effects of lmv_re and the welfare regimes are strong and significant. The interaction is highly significant overall (Chi-Squared = 625.64), indicating that the effect of labour-market risk differs across welfare regimes, even though the individual interaction terms are not significant due to the small number of country clusters.
+*/
+
+
+logit vote i.labcon2##c.EPL_R i.class5 i.cat_skill c.rlgdgr i.gender ///
+      i.ethnie2 c.age c.agea c.nat_unemp c.gdp i.cntry_num i.essround, ///
+      vce(cluster cntry_num)
+      
+estat classification 
+
+/*
+The classification statistics indicate that the model predicts voters extremely well (Sensitivity: 98.4%), but performs poorly in identifying non-voters (Specificity: 10.9%). As a result, the overall accuracy of 84.5% is largely driven by the predominance of voters in the sample. This is typical for imbalanced outcomes and shows that the model systematically overpredicts turnout.
+*/
+
+
+/*
+
+Information criteria (AIC, BIC) increase once the interaction is added, which is expected and does not indicate poor fit. Model diagnostics show no misspecification, and the ROC curve demonstrates good discrimination (AUC = 0.76). Wald tests confirm that welfare regimes significantly shape participation and that the effect of labour-market risk varies across regimes. Classification statistics reveal high sensitivity but low specificity, reflecting the imbalance in turnout. Overall, the interaction model is well specified and meaningful.
+*/

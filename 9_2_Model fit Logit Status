@@ -1,0 +1,82 @@
+
+* LOGIT: : Model Fit
+
+* Reference Model Sample Size
+logit vote c.lmv_re i.labcon2 i.class5 i.cat_skill c.rlgdgr i.gender i.ethnie2 c.age  ///
+    c.agea c.nat_unemp c.gdp i.cntry_num i.essround [pweight=newweight2], vce(cluster cntry_num)
+	
+
+* STATUS-BASED 
+	
+logit vote i.labcon2 i.class5 i.cat_skill c.rlgdgr i.gender ///
+      i.ethnie2 c.age c.agea c.nat_unemp c.gdp i.cntry_num i.essround if e(sample), ///
+      vce(cluster cntry_num)
+estimates store M_full
+
+logit vote i.labcon2 c.EPL_R i.class5 i.cat_skill c.rlgdgr i.gender ///
+      i.ethnie2 c.age c.agea c.nat_unemp c.gdp i.cntry_num i.essround if e(sample), ///
+      vce(cluster cntry_num)
+estimates store M_epl
+
+logit vote i.labcon2##c.EPL_R i.class5 i.cat_skill c.rlgdgr i.gender ///
+      i.ethnie2 c.age c.agea c.nat_unemp c.gdp i.cntry_num i.essround if e(sample), ///
+      vce(cluster cntry_num)
+estimates store M_inter
+
+estimates stats M_full M_epl M_inter     //  AIC/BIC 
+
+/*
+Basic logistic diagnostics (residuals, leverage, and DFBETAs) do not indicate any undue influence of individual observations, and re-estimating the models while dropping single countries leaves the main results unchanged, suggesting that the findings are not driven by outliers or single country leverage.
+*/
+
+logit vote i.labcon2##c.EPL_R i.class5 i.cat_skill c.rlgdgr i.gender ///
+      i.ethnie2 c.age c.agea c.nat_unemp c.gdp i.cntry_num i.essround if e(sample), ///
+      vce(cluster cntry_num)
+estimates store M_inter
+
+estat gof, group(10)                     // Hosmer-Lemeshow
+lroc                                     // ROC mit AUC
+
+/*
+To assess the final model's model fit, I first conducted a Hosmer Lemeshow goodness of fit test using ten quantiles of the predicted probabilities. The test yields Chi-X(8) = 9.98 with a p-value of 0.266, providing no evidence against the null hypothesis of adequate fit. The model does not display systematic deviations between observed and predicted values. I then examined the model's discriminative performance using the ROC curve. The area under the curve, >AUC<, is 0.765, indicating a very solid ability to distinguish between voters and non-voters.
+*/
+
+* Wald-Test
+
+logit vote i.labcon2 c.EPL_R i.class5 i.cat_skill c.rlgdgr i.gender ///
+      i.ethnie2 c.age c.agea c.nat_unemp c.gdp i.cntry_num i.essround if e(sample), ///
+      vce(cluster cntry_num)
+
+test EPL_R  
+
+
+logit vote i.labcon2##c.EPL_R i.class5 i.cat_skill c.rlgdgr i.gender ///
+      i.ethnie2 c.age c.agea c.nat_unemp c.gdp i.cntry_num i.essround if e(sample), ///
+      vce(cluster cntry_num)
+
+test 1.labcon2#c.EPL_R
+
+test EPL_R 1.labcon2#c.EPL_R
+
+/*
+While the overall coefficient for EPL was not statistically significant, the marginal effect on the probability of voting showed a significant effect for status-based labor market dualization. This suggests 
+that the relationship between EPL and voting behavior is conditional on contract type.
+*/
+
+
+logit vote i.labcon2##c.EPL_R i.class5 i.cat_skill c.rlgdgr i.gender ///
+      i.ethnie2 c.age c.agea c.nat_unemp c.gdp i.cntry_num i.essround if e(sample), ///
+      vce(cluster cntry_num)
+      
+estat classification 
+
+/*
+The classification table reveals that the model correctly classifies 84.5% of all cases. The model demonstrates high sensitivity (98.4%), correctly identifying nearly all voters, but low specificity (10.9%), meaning it  struggles to identify non-voters. This pattern is typical for models with 
+unbalanced dependent variables, where 84% of respondents reported voting.  The positive predictive value of 85.4% indicates that when the model predicts  voting, it is correct in the majority of cases.
+*/
+
+
+
+/*
+Three nested logistic regression models were estimated with clustered standard errors. Model comparisons show nearly identical fit across specifications (Pseudo R ≈ 0.144), with Wald tests indicating that adding EPL does not significantly improve model fit (p = 0.992 for main effect; p = 0.288 for interaction). The final model demonstrates good fit. Hosmer-Lemeshow test Chi X (8) = 9.98, p = 0.266; AUC = 0.765 84.5% correctly classified. Robustness checks confirm stable results. While overall EPL coefficients are not statistically significant, marginal effects analysis suggests a conditional relationship between EPL and voting behavior depending on contract type.
+*/

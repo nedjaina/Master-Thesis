@@ -1,0 +1,109 @@
+
+* Model Fit: Linear Regression
+
+* Status-Based Labor Market Dualization
+
+reg politics_index i.labcon2 c.lmv_re i.class5  i.cat_skill c.rlgdgr i.gender i.ethnie2 ///
+    c.age c.agea c.nat_unemp c.gdp i.cntry_num i.essround [pweight=newweight2], vce(cluster cntry_num)
+	
+* without EPL
+reg politics_index i.labcon2 i.class5  i.cat_skill c.rlgdgr i.gender i.ethnie2 ///
+    c.nat_unemp c.gdp c.age c.agea i.essround c.cntry_num i.cntry_num ///
+    [pweight=newweight2] if e(sample), vce(cluster cntry_num)
+estimates store M_full_ols
+
+* with EPL
+reg politics_index i.labcon2 c.EPL_R i.class5  i.cat_skill c.rlgdgr i.gender ///
+    i.ethnie2 c.nat_unemp c.gdp c.age c.agea i.essround i.cntry_num ///
+    [pweight=newweight2] if e(sample), vce(cluster cntry_num)
+estimates store M_epl_ols
+
+* Interaction 
+reg politics_index i.labcon2##c.EPL_R i.class5 i.cat_skill c.rlgdgr i.gender ///
+    i.ethnie2 c.nat_unemp c.gdp c.age c.agea i.essround i.cntry_num ///
+    [pweight=newweight2] if e(sample), vce(cluster cntry_num)
+estimates store M_inter_ols
+
+
+
+* AIC/BIC 
+estimates stats M_full_ols M_epl_ols M_inter_ols
+
+/*
+Both AIC and BIC clearly favour the interaction model, which has the lowest AIC (141) and BIC (141). This indicates that adding the interaction improves model fit relative to the full model without EPL and the model with only EPL. In other words, the interaction specification provides the best overall fit to the data.
+*/
+
+
+* Wald-Test for Moderation
+
+* Test ob welfare regimes als Haupteffekt relevant sind
+reg politics_index i.labcon2 c.EPL_R i.class5  i.cat_skill c.rlgdgr i.gender ///
+    i.ethnie2 c.nat_unemp c.gdp c.age c.agea i.essround i.cntry_num ///
+    [pweight=newweight2] if e(sample), vce(cluster cntry_num)
+test EPL_R 
+
+* Test ob die Interaktion relevant ist
+reg politics_index i.labcon2##c.EPL_R i.class5  i.cat_skill c.rlgdgr i.gender ///
+    i.ethnie2 c.nat_unemp c.gdp c.age c.agea i.essround i.cntry_num ///
+    [pweight=newweight2] if e(sample), vce(cluster cntry_num)
+	
+test 1.labcon2#c.EPL_R
+
+test EPL_R 1.labcon2#c.EPL_R
+
+/*
+The Wald test on EPL in the main effects model shows no significant average association between dismissal protection and political unconvnetional engagement. The interaction model reveals a significant moderating effect. The interaction term for temporary contracts X EPL is significant, and the joint test of EPL and the interaction confirms that the effect of EPL differs between insiders and outsiders. This indicates that EPL does not influence participation uniformly but changes the insider outsider gap, consistent with the expected moderation mechanism. 
+*/
+
+
+* Heteroskedastizität-Test  without weights and clustering
+reg politics_index i.labcon2##c.EPL_R i.class5  i.cat_skill c.rlgdgr i.gender ///
+    i.ethnie2 c.nat_unemp c.gdp c.age c.agea i.essround i.cntry_num ///
+    if e(sample)
+estat hettest
+
+/*
+Although the Breusch–Pagan test indicates heteroskedasticity, this does not threaten inference because the model is estimated with cluster-robust standard errors, which are valid under heteroskedasticity. 
+*/
+
+* Vif
+
+estat vif
+
+/*
+The VIF values for all substantive variables are low and unproblematic (mostly between 1 and 2.5). The interaction term (labcon2 X EPL_R) has a higher VIF, which is normal for interaction models because the interaction is a linear combination of its components; this does not indicate harmful multicollinearity. The extremely high VIF values for age and age squared  are expected and arise mechanically from including a polynomial term. This does not bias the estimates and is not considered a problem.
+*/
+
+
+* Residual Plot
+cap drop resid
+predict resid, residuals
+histogram resid, normal ///
+    title("Distribution of Residuals") ///
+    note("Checking normality assumption")
+graph export "residuals_hist.png", replace
+
+/*The histogram shows that the residuals deviate from a normal distribution, with noticeable right skewness and heavier tails than the fitted normal curve suggests. This indicates a violation of the normality assumption of OLS residuals. However, normality of residuals is not required for unbiased coefficients and, because the model is estimated with cluster-robust standard errors, inference remains valid even when residuals are non-normal. Residuals are not perfectly normal, but this does not pose a problem for the model, given the use of cluster-robust SEs. */
+
+
+* Predicted vs. Residuals Plot
+cap drop yhat
+predict yhat
+scatter resid yhat, ///
+    yline(0) ///
+    title("Residuals vs. Fitted Values") ///
+    ytitle("Residuals") xtitle("Fitted Values")
+graph export "residuals_fitted.png", replace
+
+/*The residuals form clear, parallel bands across the range of fitted values. This pattern reflects the discrete nature of the politics_index variable and indicates very clear heteroskedasticity, since the spread of residuals varies systematically with the fitted values. This does not threaten inference, as the model relies on cluster-robust standard errors, which remain valid under heteroskedasticity and do not require homoscedasticity or normally distributed residuals. */
+
+/*
+The linear models were evaluated using AIC/BIC, which clearly favour the interaction specification. Wald tests show that EPL alone has no main effect, but the EPL X contract-status interaction is significant, confirming the expected moderation. Diagnostic checks indicate heteroskedastic and non-normal residuals, but inference remains valid due to cluster-robust standard errors. VIF values show no problematic multicollinearity, apart from mechanically high values for age and age-squared. Overall, the model is well specified and statistically reliable.
+*/
+
+
+
+
+
+
+

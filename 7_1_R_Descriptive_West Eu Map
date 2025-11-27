@@ -1,0 +1,173 @@
+# Packages
+
+library(haven)
+library(dplyr)
+library(sf)
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(ggplot2)
+library(viridis)
+library(eurostat)
+library(ggplot2)
+library(viridis)
+library(ggthemes)
+library(giscoR)
+
+
+# Own Theme Latex
+theme_s2mono_latex <- function(base_size = 14, base_family = "CMU Serif") {
+  fonts <- tryCatch(systemfonts::system_fonts()$family, error = function(e) character(0))
+  if (!base_family %in% fonts) {
+    base_family <- "serif"
+  }
+  
+  theme_void(base_size = base_size, base_family = base_family) %+replace%
+    theme(
+      plot.title = element_text(
+        size = base_size * 1.2,
+        hjust = 0,
+        margin = margin(b = 5),
+        family = base_family
+      ),
+      plot.subtitle = element_text(
+        size = base_size * 0.9,
+        hjust = 0,
+        margin = margin(t = 6, b = 20),
+        family = base_family
+      ),
+      plot.caption = element_text(
+        size = base_size * 0.7,
+        hjust = 0,
+        color = "grey40",
+        margin = margin(t = 15),
+        family = base_family
+      ),
+      legend.title = element_text(size = base_size * 0.8, family = base_family),
+      legend.text  = element_text(size = base_size * 0.7, family = base_family)
+    )
+}
+
+# Merged ESS Data
+df <- read_dta("")
+
+
+# Mean
+epl_country <- df |>
+  mutate(
+    geo = toupper(cntry),
+    geo = if_else(geo == "GB", "UK", geo)
+  ) |>
+  group_by(geo) |>
+  summarise(
+    EPL_mean = mean(EPL_R, na.rm = TRUE),
+    .groups  = "drop"
+  )
+epl_country
+
+
+geodata <- get_eurostat_geospatial(
+  resolution = "10",  
+  nuts_level = 0,
+  year       = 2016
+)
+giscoR::gisco_get_nuts()
+
+
+map_data <- left_join(geodata, epl_country, by = "geo")
+
+
+# Label Mean
+map_data_3035 <- st_transform(map_data, 3035)
+label_points_3035 <- st_point_on_surface(map_data_3035)
+label_points <- st_transform(label_points_3035, 4326)   # zurück zu WGS84
+
+label_points <- label_points |>
+  filter(!is.na(EPL_mean)) |>
+  mutate(
+    label = sprintf("%.2f", EPL_mean)   # z.B. 2.13
+  )
+
+# Generate Map
+eu_map1 <- ggplot() +
+  geom_sf(
+    data   = map_data,
+    fill   = "grey95",
+    color  = "white",
+    linewidth = 0.1
+  ) +
+  geom_sf(
+    data   = map_data |> filter(!is.na(EPL_mean)),
+    aes(fill = EPL_mean),
+    color  = "grey30",
+    linewidth = 0.2
+  ) +
+  scale_x_continuous(limits = c(-15, 35)) +
+  scale_y_continuous(limits = c(40, 70)) +
+  scale_fill_gradientn(
+    name = "Mean EPL",
+    colours = c(
+      "#f5f8ff", 
+      "#dbe4f5",  
+      "#b3c6e0", 
+      "#7f9fc7",  
+      "#5077a9", 
+      "#2f4f7f"   
+    ),
+    values = c(
+      0.00,
+      0.20,
+      0.40,
+      0.65,  
+      0.85,
+      1.00
+    ),
+    na.value = "grey90"
+  ) +
+  labs(
+    title    = "Employment Protection Legislation in Western Europe",
+    subtitle = "Mean Employment Protection Legislation by country (averaged over 2012-2018)",
+    caption  = "Own calculation via Eurostat R Package (2025)"
+  ) +
+  theme_void() +
+  theme(
+    plot.title    = element_text(size = 15, hjust = 0),
+    plot.subtitle = element_text(size = 11, hjust = 0, margin = margin(b = 5)),
+    plot.caption  = element_text(size = 8, color = "grey40", hjust = 0, margin = margin(t = 12)),
+    plot.margin   = margin(t = 40, r = 30, b = 30, l = 20),
+    legend.position = "right",
+    legend.title    = element_text(size = 9),
+    legend.text     = element_text(size = 8)
+ ) +
+  theme(
+   plot.title = element_text(
+     size = 15, hjust = 0,
+     margin = margin(b = 5)  
+   ),
+   plot.subtitle = element_text(
+     size = 11, hjust = 0,
+     margin = margin(t = 6, b = 30)  
+   ),
+   plot.caption  = element_text(
+     size = 10, color = "grey40",
+     hjust = 0, margin = margin(t = 18)
+   ),
+   plot.margin   = margin(t = 40, r = 30, b = 30, l = 20),
+   legend.position = "right",
+   legend.title    = element_text(size = 9),
+   legend.text     = element_text(size = 8))  + 
+    geom_sf_text(
+    data  = label_points,
+    aes(label = label),
+    size  = 2.0,
+    color = "black",
+    fontface = "bold"
+  ) + theme_s2mono_latex(base_size = 14)
+
+
+eu_map1
+
+
+pdf("EPL_MAP.pdf", family = "CM Roman")
+
+
+

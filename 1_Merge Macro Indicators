@@ -1,0 +1,41 @@
+* 1. Create Data Set with Macro-Economic Indicators
+
+import excel ".xlsx", sheet("Table") cellrange (A1:E45) firstrow clear // Macro Economic Indicators Excel Sheet
+cd "/Users/nastianedjai/Desktop/MA_TEXT/2_MA Datenanalyse/" // Please specify your working directory
+
+destring year EPL gdp, replace
+save MA_MAKRO.dta, replace
+
+* 2. Switch to 2_Risk Values to generate necessary variables to merge
+
+* 3. Merge Macro Economic Indicators to ESS Data
+
+drop _merge
+merge m:1 cntry year using "MA_MAKRO.dta" 
+
+list cntry gdp EPL nat_unemp essround if year == 2013
+list cntry gdp EPL nat_unemp essround if year == 2015
+list cntry gdp EPL nat_unemp essround if year == 2017
+list cntry gdp EPL nat_unemp essround if year == 2019
+
+sort cntry year
+
+* Replace 2013 values with 2012 values (same wave)
+replace gdp       = gdp[_n-1]       if year == 2013 & cntry == cntry[_n-1]
+replace EPL       = EPL[_n-1]       if year == 2013 & cntry == cntry[_n-1]
+replace nat_unemp = nat_unemp[_n-1] if year == 2013 & cntry == cntry[_n-1]
+
+* Replace 2015 values with 2014 values (same wave)
+replace gdp       = gdp[_n-1]       if year == 2015 & cntry == cntry[_n-1]
+replace EPL       = EPL[_n-1]       if year == 2015 & cntry == cntry[_n-1]
+replace nat_unemp = nat_unemp[_n-1] if year == 2015 & cntry == cntry[_n-1]
+
+* Replace 2017 values with 2016 values (same wave)
+replace gdp       = gdp[_n-1]       if year == 2017 & cntry == cntry[_n-1]
+replace EPL       = EPL[_n-1]       if year == 2017 & cntry == cntry[_n-1]
+replace nat_unemp = nat_unemp[_n-1] if year == 2017 & cntry == cntry[_n-1]
+
+* Replace 2019 values with 2018 values (same wave)
+replace gdp       = gdp[_n-1]       if year == 2019 & cntry == cntry[_n-1]
+replace EPL       = EPL[_n-1]       if year == 2019 & cntry == cntry[_n-1]
+replace nat_unemp = nat_unemp[_n-1] if year == 2019 & cntry == cntry[_n-1]

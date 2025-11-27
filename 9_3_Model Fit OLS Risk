@@ -1,0 +1,103 @@
+
+* Model Fit: Linear Regression
+
+* Risk-Based Labor Msrket Dualization
+
+reg politics_index i.labcon2 c.lmv_re i.cat_skill i.class5 i.inc3med c.rlgdgr i.gender i.ethnie2 ///
+    c.age c.agea c.nat_unemp c.gdp i.cntry_num i.essround [pweight=newweight2], vce(cluster cntry_num)
+	
+* without welfare_regime
+reg politics_index c.lmv_re i.cat_skill c.rlgdgr i.gender i.ethnie2 ///
+    c.nat_unemp c.gdp c.age c.agea i.essround i.cntry_num ///
+    [pweight=newweight2] if e(sample), vce(cluster cntry_num)
+estimates store M_full_ols
+
+* with welfare regime 
+reg politics_index c.lmv_re i.welfare_regime i.cat_skill c.rlgdgr i.gender ///
+    i.ethnie2 c.nat_unemp c.gdp c.age c.agea i.essround i.cntry_num ///
+    [pweight=newweight2] if e(sample), vce(cluster cntry_num)
+estimates store M_wel_ols
+
+* Interaction 
+reg politics_index c.lmv_re##i.welfare_regime i.cat_skill c.rlgdgr i.gender ///
+    i.ethnie2 c.nat_unemp c.gdp c.age c.agea i.essround c.cntry_num ///
+    [pweight=newweight2] if e(sample), vce(cluster cntry_num)
+estimates store M_inter_ols
+
+
+
+* AIC/BIC für alle Modelle
+estimates stats M_full_ols M_wel_ols M_inter_ols
+
+/*
+The interaction model (M_inter_ols) has the lowest AIC and BIC, making it the best-fitting specification.
+The welfare-regime model (M_wel_ols) performs slightly worse, and the full model clearly has the poorest fit.
+*/
+
+* Wald-Test for Moderation
+
+* Test ob welfare regimes als Haupteffekt relevant sind
+reg politics_index c.lmv_re i.welfare_regime i.cat_skill c.rlgdgr i.gender ///
+    i.ethnie2 c.nat_unemp c.gdp c.age c.agea i.essround i.cntry_num ///
+    [pweight=newweight2], vce(cluster cntry_num)
+testparm i.welfare_regime 
+
+* Test ob die Interaktion relevant ist
+reg politics_index c.lmv_re##i.welfare_regime i.cat_skill c.rlgdgr i.gender ///
+    i.ethnie2 c.nat_unemp c.gdp c.age c.agea i.essround i.cntry_num ///
+    [pweight=newweight2], vce(cluster cntry_num)
+testparm 2.welfare_regime#c.lmv_re 3.welfare_regime#c.lmv_re  // Joint test Interaktion
+
+/*
+In a first step, I estimated a model with labour market risk and welfare regime dummies and used a joint Wald test to assess whether regimes matter for overall levels of political engagement. The regime block is clearly significant (p = 0.0039), indicating systematic cross-regime differences. In a second step, I estimated an interaction model (lmv_re X welfare_regime) and conducted a joint Wald test on the interaction terms, which is borderline significant (p = 0.061), suggesting some moderation of the risk effect by welfare regimes, but with limited statistical power given only nine country clusters.
+*/
+
+
+* VIF WITHOUT weights
+reg politics_index c.lmv_re##i.welfare_regime i.cat_skill c.rlgdgr i.gender ///
+    i.ethnie2 c.nat_unemp c.gdp c.age c.agea i.essround i.cntry_num
+estat vif
+
+/*
+The extremely high VIF values for age and agea (indicate perfect or near-perfect multicollinearity, which is expected because age and age squared (agea) are mechanically dependent. This inflates the mean VIF but does not threaten the validity of the model. All other variables show acceptable VIF levels (mostly below 3–4), and the interaction terms remain within a tolerable range. Thus, aside from the intentional polynomial collinearity between age and age², there is no evidence of problematic multicollinearity in the model. */
+
+* Heteroskedastizität-Test  without weights and clustering
+reg politics_index c.lmv_re##i.welfare_regime i.cat_skill c.rlgdgr i.gender ///
+    i.ethnie2 c.nat_unemp c.gdp c.age c.agea i.essround i.cntry_num
+estat hettest
+
+/*
+The Breusch–Pagan test rejects the null hypothesis of homoscedasticity (Chi Squared , p < 0.001), indicating clear evidence of heteroskedasticity. This confirms that using cluster-robust standard errors is appropriate and necessary. 
+*/
+       
+
+* Residual Plot
+predict resid, residuals
+histogram resid, normal ///
+    title("Distribution of Residuals") ///
+    note("Checking normality assumption")
+graph export "residuals_hist.png", replace
+
+
+/*
+The histogram shows that residuals are approximately normally distributed and centered around zero, which supports the normality assumption of OLS regression. While there is a slight positive skew with some residuals extending into the right tail, this deviation is minor and acceptable given the large sample size . The distribution follows the overlaid normal curve reasonably well in the central range, indicating that the model adequately captures the relationship between predictors and political efficacy. Combined with cluster robust standard errors, these diagnostics confirm that the model meets the key assumptions for valid statistical inference.
+*/
+
+* Predicted vs. Residuals Plot
+cap drop yhat
+predict yhat
+scatter resid yhat, ///
+    yline(0) ///
+    title("Residuals vs. Fitted Values") ///
+    ytitle("Residuals") xtitle("Fitted Values")
+graph export "residuals_fitted.png", replace
+
+/*The residual–fitted plot displays a clear "layered" pattern and non-constant spread across the range of fitted values. This indicates heteroskedasticity and systematic structure in the residuals, meaning the variance of the errors changes with the predicted level of the outcome. However, this does not invalidate the model, because inference is based on cluster-robust standard errors, which remain valid under heteroskedasticity and arbitrary within-cluster correlatio. The plot again confirms heteroskedasticity, but this is appropriately handled by using cluster-robust SEs.
+*/
+
+/*
+Model comparison using AIC and BIC shows that the interaction model provides the best fit, outperforming both the model without welfare regimes and the model with main effects only. Wald tests confirm that welfare regimes significantly shape overall levels of political engagement (p ≈ 0.004), while the interaction terms provide borderline evidence of moderation (p ≈ 0.06), consistent with limited statistical power due to few country clusters. Diagnostic checks indicate no problematic multicollinearity apart from the expected mechanical collinearity between age and age squared. Tests without weights reveal heteroskedasticity and structured residual patterns, but inference remains valid because the main models are estimated with cluster-robust standard errors. Overall, the specification is statistically sound and supports the claim that welfare regimes condition the relationship between labour market risk and unconventional participation.
+*/
+
+
+

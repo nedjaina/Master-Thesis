@@ -1,0 +1,272 @@
+**************************************************
+* ESS6–9 | Preparing the variables 
+**************************************************
+
+*-----------------------------------------------*
+* Weights
+*-----------------------------------------------*
+gen newweight  = dweight * pspwght
+gen newweight2 = pspwght * pweight
+
+
+*-----------------------------------------------*
+* Welfare regime classification
+*-----------------------------------------------*
+
+cap drop welfare_regime
+gen welfare_regime = .
+
+* Social-democratic countries
+replace welfare_regime = 1 if inlist(cntry, "SE", "NO", "DK")
+
+* Conservative / corporatist countries
+replace welfare_regime = 2 if inlist(cntry, "DE", "FR", "NL", "BE")
+
+* Liberal countries
+replace welfare_regime = 3 if inlist(cntry, "UK", "IE")
+
+* Labels
+capture label drop reglbl
+label define reglbl ///
+    1 "Northern" ///
+    2 "Continental" ///
+    3 "Liberal"
+label values welfare_regime reglbl
+
+* Check
+tab welfare_regime, m
+
+
+*-----------------------------------------------*
+* Country numeric codes
+*-----------------------------------------------*
+cap drop cntry_num
+gen cntry_num = .
+replace cntry_num = 1 if cntry == "BE"
+replace cntry_num = 2 if cntry == "DE"
+replace cntry_num = 3 if cntry == "DK"
+replace cntry_num = 4 if cntry == "FR"
+replace cntry_num = 5 if cntry == "UK"
+replace cntry_num = 6 if cntry == "IE"
+replace cntry_num = 7 if cntry == "NL"
+replace cntry_num = 8 if cntry == "NO"
+replace cntry_num = 9 if cntry == "SE"
+
+
+*-----------------------------------------------*
+* Conventional political participation: Vote
+*-----------------------------------------------*
+recode vote (3 = .) (2 = 0)
+
+capture label drop votelbl
+label define votelbl 0 "Did not vote" 1 "Voted"
+label values vote votelbl
+label variable vote "Last national election (voted vs. abstained)"
+
+
+*---------------------------------------------------------------*
+* Unconventional political participation: Politics index
+*---------------------------------------------------------------*
+
+* Clone variables for PCA
+clonevar u_wrkorg = wrkorg
+clonevar u_bctprd = bctprd
+clonevar u_pbldmn = pbldmn
+clonevar u_sgnptit = sgnptit
+clonevar u_vote   = vote
+
+* Correlation Matrix
+corr u_*
+
+* Cronbachs Alpha: Test Scale
+alpha u_*, d item
+
+* Recode vote for initial PCA (later excluded)
+recode u_vote (0 = 2)   // make direction consistent (see Appendix)
+
+* First PCA including vote
+pca u_* [aweight = anweight]
+scree
+
+* Exclude vote from the index
+rename u_vote i_vote
+
+* PCA without vote
+pca u_* [aweight = anweight]
+scree
+
+* One-factor solution
+factor u_* [aweight = anweight], ipf factors(1)
+rotate, varimax
+
+* Simple additive index (0–4) based on four acts
+foreach var in sgnptit pbldmn bctprd wrkorg {
+    gen `var'_r = .
+    replace `var'_r = 1 if `var' == 1    // Yes
+    replace `var'_r = 0 if `var' == 2    // No
+}
+
+egen politics_index = rowtotal(sgnptit_r pbldmn_r bctprd_r wrkorg_r)
+label variable politics_index "Political engagement index (0–4)"
+
+tab politics_index
+sum politics_index
+
+
+*-----------------------------------------------*
+* Status-based labour-market dualization
+*-----------------------------------------------*
+cap drop labcon2
+clonevar labcon2 = wrkctra
+recode labcon2 (1 = 0) (2 = 1) (3 = .)
+
+capture label drop labcon2
+label define labcon2 0 "Permanent contract" 1 "Temporary contract"
+label values labcon2 labcon2
+label variable labcon2 "Employment contract (status-based dualization)"
+
+
+*-----------------------------------------------*
+* Risk-based labour-market dualization
+*-----------------------------------------------*
+
+* Rescale lmv to [-3, 3]
+sum lmv
+scalar min_lmv = r(min)
+scalar max_lmv = r(max)
+
+cap drop lmv_re
+gen lmv_re = ((lmv - min_lmv) / (max_lmv - min_lmv)) * 6 - 3
+label variable lmv_re "Labour-market risk (rescaled -3 to 3)"
+fre lmv_re
+
+* Binary risk grouping: insiders vs. outsiders
+cap drop lmv_group
+gen lmv_group = .
+
+* Not at risk: <= 0, At risk: > 0
+replace lmv_group = 0 if lmv_re <= 0
+replace lmv_group = 1 if lmv_re > 0
+
+capture label drop lmvgrp
+label define lmvgrp 0 "Not at risk" 1 "At risk"
+label values lmv_group lmvgrp
+label variable lmv_group "Binary labour-market risk group"
+
+tab lmv_group
+
+
+*-----------------------------------------------*
+* Demographic controls
+*-----------------------------------------------*
+
+*-----------------------------------------------*
+* Age
+*-----------------------------------------------*
+cap drop age2
+gen age2 = agea^2
+label variable agea "Age"
+label variable age2 "Age squared"
+
+
+*-----------------------------------------------*
+* Ethnic origin / minority status
+*-----------------------------------------------*
+cap drop ethnie
+gen ethnie = .
+replace ethnie = 1 if brncntr == 1 & mocntr == 1 & facntr == 1
+replace ethnie = 2 if brncntr == 1 & (mocntr == 2 | facntr == 2)
+replace ethnie = 3 if brncntr == 2
+
+capture label drop ethnie_lbl
+label define ethnie_lbl 1 "Majority" 2 "Second generation" 3 "Minority"
+label values ethnie ethnie_lbl
+label variable ethnie "Ethnic origin"
+
+cap drop ethnie2
+recode ethnie (2 3 = 2), gen(ethnie2)
+capture label drop ethnie_lbl2
+label define ethnie_lbl2 1 "Majority" 2 "Minority"
+label values ethnie2 ethnie_lbl2
+label variable ethnie2 "Ethnic minority (binary)"
+
+
+*-----------------------------------------------*
+* Household income (below vs. above median)
+*-----------------------------------------------*
+cap drop inc3med
+gen inc3med = .
+replace inc3med = 1 if hinctnta < 6    // 1–5 = below median
+replace inc3med = 2 if hinctnta >= 6   // 6–10 = above median
+
+capture label drop inc3med1
+label define inc3med1 1 "Below median" 2 "Above median"
+label values inc3med inc3med1
+label variable inc3med "Household income (below/above median)"
+
+
+*-----------------------------------------------*
+* Skill & Education
+*-----------------------------------------------*
+cap drop cat_skill
+clonevar cat_skill = eisced
+recode cat_skill (1 2 = 1) (3 4 = 2) (5 6 7 = 3) (55 = .)
+
+cap drop num_skill
+clonevar num_skill = eduyrs
+
+cap drop cat_skill2
+clonevar cat_skill2 = eisced
+recode cat_skill2 (1 2 3 4 = 1) (5 6 7 = 2) (55 = .)
+
+capture label drop cat_skill2_lbl
+label define cat_skill2_lbl 1 "Low" 2 "High"
+label values cat_skill2 cat_skill2_lbl
+
+capture label drop cat_skill_lbl
+label define cat_skill_lbl 1 "Low" 2 "Intermediate" 3 "High"
+label values cat_skill cat_skill_lbl
+
+label variable num_skill "Years of education"
+
+
+*-----------------------------------------------*
+* Marital status (ever married)
+*-----------------------------------------------*
+fre evmar  
+
+capture label drop evmar_lbl
+label define evmar_lbl ///
+    1 "Currently or previously married" ///
+    2 "Never married"
+label values evmar evmar_lbl
+label variable evmar "Marital status (ever married)"
+
+
+*-----------------------------------------------*
+* Religiosity
+*-----------------------------------------------*
+capture label drop rlgdgr_lbl
+label define rlgdgr_lbl ///
+    0  "Not at all religious" ///
+    1  "1 – Slightly religious" ///
+    2  "2" ///
+    3  "3" ///
+    4  "4" ///
+    5  "5 – Moderately religious" ///
+    6  "6" ///
+    7  "7" ///
+    8  "8" ///
+    9  "9" ///
+    10 "Very religious"
+
+label values rlgdgr rlgdgr_lbl
+label variable rlgdgr "Self-rated religiosity (0–10)"
+
+
+*-----------------------------------------------------------------*
+* Sample restriction: countries & age range 
+*-----------------------------------------------------------------*
+
+* Keep only treated welfare regimes and working-age respondents
+keep if inlist(welfare_regime, 1, 2, 3) & inrange(agea, 16, 65)

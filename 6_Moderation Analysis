@@ -1,0 +1,226 @@
+
+
+
+* -- MODERATION WELFARE REGIME
+
+* Descriptive Results in R
+
+* CONVENTIONAL PARTICIPATION
+
+* Full-Model Reference to ensure same sample size 
+logit vote c.lmv_re i.labcon2 i.class5 i.cat_skill c.rlgdgr i.gender i.ethnie2 c.age  ///
+    c.agea c.nat_unemp c.gdp i.cntry_num i.essround [pweight=newweight2], vce(cluster cntry_num)
+
+logit vote c.lmv_re##i.welfare_regime i.cat_skill c.rlgdgr i.gender i.ethnie2 c.nat_unemp c.gdp c.agea c.age i.cntry_num i.essround if e(sample) [pweight=newweight2], vce(cluster cntry_num) 
+
+margins, at(lmv_re =(-3 0 3)) dydx(welfare_regime) 
+	
+marginsplot, ///
+	by(welfare_regime) 
+    title("Contrasts of Marginal Effect for Conventional Participation between Welfare States", size(medium) margin(b=2)) ///
+    ytitle("Difference Average Marginal Effect to Vote", size(3)) ///
+    xtitle("Employment Protection Legislation", size(3) margin(b=2)) ///
+	ysize(1) xsize(1.5)  ///
+	yline(0, lpattern(dash) lcolor(cranberry)) ///
+    ylabel(, angle(horizontal)) ///
+    graphregion(color(white)) ///
+    plotregion(color(white)) ///
+	plot1opts(msymbol(circle) mcolor(eltblue%70) msize(medsmall)) ///
+	 ci1opts(color(eltblue) lcolor(eltblue)) ///
+	 plot2opts(msymbol(circle) mcolor(navy%70) msize(medsmall)) ///
+	 ci2opts(color(eltblue) lcolor(navy)) ///
+	name(con_stat_1, replace)
+
+	
+* UNCONVENTIONAL PARTICIPATION
+
+* Full-Model Reference to ensure same sample size 
+reg politics_index i.labcon2 c.lmv_re i.cat_skill i.class5  c.rlgdgr i.gender i.ethnie2 c.age c.agea c.nat_unemp c.gdp i.cntry_num i.essround [pweight=newweight2], vce(cluster cntry_num)
+
+
+reg politics_index c.lmv_re##i.welfare_regime i.cat_skill c.rlgdgr i.gender i.ethnie2 c.nat_unemp c.gdp c.age c.agea i.essround i.cntry_num if e(sample)   [pweight=newweight2], vce(cluster cntry_num) 
+
+margins, at(lmv_re =(-3 (1) 3)) dydx(welfare_regime)
+	
+marginsplot,
+title("Contrasts of Marginal Effect for Unconventional Participation between Welfare States", size(medium) margin(b=2)) ///
+    ytitle("Difference Average Marginal Effect to Vote", size(3)) ///
+    xtitle("Employment Protection Legislation", size(3) margin(b=2)) ///
+	ysize(1) xsize(1.5)  ///
+	yline(0, lpattern(dash) lcolor(cranberry)) ///
+    ylabel(, angle(horizontal)) ///
+    graphregion(color(white)) ///
+    plotregion(color(white)) ///
+	plot1opts(msymbol(O) mcolor(eltblue%70)) ///
+	 ci1opts(color(eltblue) lcolor(eltblue)) ///
+	 plot2opts(msymbol(O) mcolor(navy%70)) ///
+	 ci2opts(color(eltblue) lcolor(navy)) ///
+	  plot2opts(lcolor(navy) lwidth(medthick) ///
+    legend(order(1 "Bismarckian Welfare Regime" ///
+                 2 "Southern Welfare Regime") ///
+           pos(6) ring(1) row(2) size(*0.7)) ///
+	name(con_stat_2, replace)
+
+
+combine graph	con_stat_1 con_stat_2, size(10) title("Moderation of Welfare State Regime") subtitle("Discrete Effect Across Risk-Based Dualization (Ref. Northern Welfare Regime)")
+	
+	
+	
+	
+* -- MODERATION EMPLOYMENT PROTECTION MEASURE
+
+* DESCRIPTIVE2: DIFFERENCE INSIDER-OUTSIDER ACROSS EPL
+
+frame put EPL_R labcon2 wrkctra cntry, into(epl_plot)
+frame change epl_plot
+
+gen byte sample_dual = !missing(cntry,  labcon2, EPL_R)
+
+gen byte sb_out = .
+replace sb_out = 1 if sample_dual == 1 & labcon2 == 1
+replace sb_out = 0 if sample_dual == 1 & labcon2 == 0
+
+gen byte sb_in = .
+replace sb_in = 1 if sample_dual == 1 & labcon2 == 0
+replace sb_in = 0 if sample_dual == 1 & labcon2 == 1
+
+label var sb_out "Status-based: temporary contract (Outsider)"
+label var sb_in  "Status-based: permanent contract (Insider)"
+
+
+bys cntry: egen share_sb_out = mean(sb_out)
+bys cntry: egen share_sb_in  = mean(sb_in)
+
+bys cntry: egen EPL_mean = mean(EPL)
+
+
+gen sb_dual_gap = share_sb_out - share_sb_in
+label var sb_dual_gap "Status-based dualization gap (outsider - insider)"
+
+
+bys cntry: keep if _n == 1
+
+
+gen share_sb_out_pct   = share_sb_out   * 100
+gen share_sb_in_pct    = share_sb_in    * 100
+
+label var share_sb_out_pct   "Temporary contracts (percent)"
+label var share_sb_in_pct    "Permanent contracts (percent)"
+
+
+twoway ///
+    (scatter sb_dual_gap EPL_mean, ///
+        mlabel(cntry) mlabposition(1) mlabsize(vsmall) ///
+       msymbol(circle) mcolor(eltblue)), ///
+    title("Status-based Dualization and Employment Protection Legislation", size(medium) margin(b=1)) ///
+	subtitle("Country-Level Averages of EPL and Contract Status Difference (in %)", size(medsmall) margin(b=2)) ///
+    xtitle("Employment Protection Legislation") ///
+    ytitle("Difference Outsider versus Insider in %") ///
+    legend(off) ///
+	yscale(range(-0.7 0.05)) ///
+	ylabel(-0.7(0.1)0) ///
+	name(stat_epl_2, replace)
+
+frame change default
+
+
+
+
+
+* CONVETNIONAL PARTICIPATION
+
+
+* Full-Model Reference to ensure same sample size 
+logit vote c.lmv_re i.labcon2 i.class5 i.cat_skill c.rlgdgr i.gender i.ethnie2 c.age  ///
+    c.agea c.nat_unemp c.gdp i.cntry_num i.essround [pweight=newweight2], vce(cluster cntry_num)
+	
+logit vote i.labcon2##c.EPL_R i.cat_skill i.class5 c.rlgdgr i.gender i.ethnie2 c.nat_unemp c.gdp c.age c.agea i.cntry_num i.essround if e(sample) [pweight=newweight2] , vce(cluster cntry_num) 
+
+margins, at(EPL_R =(1.6(0.2)3.2)) dydx(labcon2) 
+	
+marginsplot, ///
+    title("Contrasts of Average Marginal Effect for Conventional Participation", size(medlarge) margin(b=2)) ///
+    ytitle("Difference Average Marginal Effect to Vote", size(3)) ///
+    xtitle("Employment Protection Legislation", size(3) margin(b=2)) ///
+	ysize(1) xsize(1.5)  ///
+    ylabel(, angle(horizontal)) ///
+    xlabel(1.6(0.2)3.2) ///
+	ylabel(0(0.02)-0.12) ///
+	xscale(range(1.6 3.2)) ///
+	yline(0, lpattern(dash) lcolor(cranberry)) ///
+    graphregion(color(white)) ///
+    plotregion(color(white)) ///
+	plot1opts(msymbol(O) mcolor(eltblue%70)) ///
+	 ci1opts(color(eltblue) lcolor(eltblue)) ///
+	recast(scatter) ///
+	name(con_epl_stat_1a, replace)
+
+* Additionally
+margins, at(EPL_R =(1.6(0.2)3.2) labcon2=(0 1)) 
+
+marginsplot, ///
+    title("Predicitve Marginal Effect for Conventional Participation", size(medium) margin(b=2)) ///
+    xtitle("Employment Protection Legislation", size(small) margin(b=2)) ///
+    ylabel(, angle(horizontal)) ///
+	xsize(8) ///
+    plot1opts(lcolor(edkblue) lwidth(medthick) msymbol(O) mcolor(edkblue%70)) ///
+    plot2opts(lcolor(eltblue) lwidth(medthick) msymbol(O) mcolor(eltblue%70)) ///
+    ci1opts(color(edkblue) lcolor(edkblue)) ///
+    ci2opts(color(eltblue) lcolor(eltblue)) ///
+    ylabel(, angle(horizontal)) ///
+	xlabel(1.6 "1.6" 1.8 "1.8" 2 "2.0" 2.2 "2.2" 2.4 "2.4" 2.6 "2.6" 2.8 "2.8" 3.0 "3.0" 3.2 "3.2" ) ///
+	legend(order(1 "Temporary Contract" 2 "Permanent Contract") pos(6))
+    graphregion(color(white)) ///
+    plotregion(color(white)) ///
+	name(uncon_epl_stat1b, replace)
+
+
+* UNCONVENTIONAL PARTICIPAION
+
+
+* Full-Model Reference to ensure same sample size 
+reg politics_index i.labcon2 c.lmv_re i.cat_skill i.class5 c.rlgdgr i.gender i.ethnie2 c.age c.agea c.nat_unemp c.gdp i.cntry_num i.essround [pweight=newweight2], vce(cluster cntry_num)
+
+reg politics_index i.labcon2##c.EPL_R i.cat_skill i.class5 c.rlgdgr i.gender i.ethnie2 c.nat_unemp c.gdp c.age c.agea i.cntry_num i.essround  if e(sample) [pweight=newweight2], vce(cluster cntry_num) 
+
+margins, at(EPL_R =(1.6(0.2)3.2)) dydx(labcon2) 
+	
+marginsplot, ///
+    title("Contrasts of Average Marginal Effect for Unconventional Participation", size(medlarge) margin(b=2)) ///
+    ytitle("Difference Average Marginal Effect to Engage", size(3)) ///
+    xtitle("Employment Protection Legislation", size(3) margin(b=2)) ///
+	ysize(1) xsize(1.5)  ///
+	yline(0, lpattern(dash) lcolor(cranberry)) ///
+    ylabel(, angle(horizontal)) ///
+     xlabel(1.6(0.2)3.2) ///
+	xscale(range(1.6 3.2)) ///
+    graphregion(color(white)) ///
+    plotregion(color(white)) ///
+	plot1opts(msymbol(O) mcolor(eltblue%70)) ///
+	 ci1opts(color(eltblue) lcolor(eltblue)) ///
+	recast(scatter) ///
+	name(con_epl_stat_2b, replace)
+	
+
+* Additionally
+margins, at(EPL_R =(1.6(0.2)3.2) labcon2=(0 1)) 
+
+marginsplot, ///
+    title("Predicitve Marginal Effect for Unconventional Participation", size(medlarge) margin(b=2)) ///
+    xtitle("Employment Protection Legislation", size(small) margin(b=2)) ///
+    ylabel(, angle(horizontal)) ///
+	xsize(8) ///
+    plot1opts(lcolor(edkblue) lwidth(medthick) msymbol(O) mcolor(edkblue%70)) ///
+    plot2opts(lcolor(eltblue) lwidth(medthick) msymbol(O) mcolor(eltblue%70)) ///
+    ci1opts(color(edkblue) lcolor(edkblue)) ///
+    ci2opts(color(eltblue) lcolor(eltblue)) ///
+    ylabel(, angle(horizontal)) ///
+	xlabel(1.6 "1.6" 1.8 "1.8" 2 "2.0" 2.2 "2.2" 2.4 "2.4" 2.6 "2.6" 2.8 "2.8" 3.0 "3.0" 3.2 "3.2" ) ///
+	legend(order(1 "Temporary Contract" 2 "Permanent Contract") pos(6))
+    graphregion(color(white)) ///
+    plotregion(color(white)) ///
+	name(uncon_epl_stat2b, replace)
+	
+graph combine con_epl_stat_1a con_epl_stat_2a, title("Modration Employment Protection Legislation")  subtitle("Discrete Average Marginal Effect for Outsiders with Temporary Contract (Ref. Insiders with Permenant Contract)", size(medsmall) margin(b=3)) xsize(10)
+
+graph combine con_epl_stat_1b con_epl_stat_2b, title("Modration Employment Protection Legislation (Predictive Marginal Effects)")
